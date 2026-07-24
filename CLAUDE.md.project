@@ -1,0 +1,142 @@
+# CLAUDE.md
+
+> **Template.** This is an EXAMPLE project-level `CLAUDE.md`, flavored for the fictional
+> "Bookmarkr" project (FastAPI + PostgreSQL + React) that ships with this knowledge base.
+> It lives at your project repo's root and is mirrored here as `CLAUDE.md.project` for
+> cross-worktree continuity. Replace every section below with your own project's facts.
+> The *shape* is the point: project-specific commands/structure/integrations go here;
+> generic coding rules and the workflow live in the shared docs.
+
+This file provides **project-specific** guidance. **Generic coding rules and the development workflow live in the shared documents — not here.**
+
+## Canonical workflow and standards (read first)
+
+Before applying anything below, the canonical sources of truth are:
+
+- **`karpathy-knowledge-base-example/docs/index.md`** — topic-organised catalog of every doc. Start here when looking up a concept, decision, domain term, or iteration.
+- **`karpathy-knowledge-base-example/docs/log.md`** — append-only chronological log of decisions, ingests, iterations, meetings, and incidents. Grep this for "when did we decide X" / "what happened in week of Y".
+- **`karpathy-knowledge-base-example/docs/development-workflow.md`** — the **Plan → Code → Review → Explain** cycle. Mandatory for every non-trivial change. Phase 2 mandates the `tdd` skill and a per-slice `tdd-trace.md` artifact. Phase 3 binds the review agent to the standards document below. Phase 4 MUST append to `log.md` and update `index.md` if a new doc/iteration was produced.
+- **`karpathy-knowledge-base-example/docs/research-workflow.md`** — Plan → Research → Review fan-out/fan-in cycle for non-code questions. **Opt-in**. Output lands in `karpathy-knowledge-base-example/docs/research/<topic>/`, never in `iterations/`.
+- **`karpathy-knowledge-base-example/docs/review-coding-standards.md`** — enforceable coding rules across sections A–Q (general principles, architecture, security, performance, code quality, code hygiene, framework/API specifics, data access, migrations, testing, frontend, git, plan compliance, behaviour-change visibility, infrastructure, Docker, CI/CD). The review agent applies these; the verdict is mechanical (any MUST violation → CHANGES REQUESTED). Sections G/H/I/K are stack-specific placeholders — fill them in for your stack.
+- **`karpathy-knowledge-base-example/docs/references/02-claude-code-skills-strategy.md`** — when to apply which Claude Code skill within each workflow phase.
+
+If anything in this file conflicts with the shared documents, the shared documents win — flag the conflict so we can fix the project file. **Do not duplicate rules into this file.** Drift between this file and the shared documents is the failure mode this structure exists to prevent.
+
+This file contains ONLY project-specific information that doesn't belong in the shared documents: build commands, project structure, integrations, environment configuration, project-specific overrides.
+
+---
+
+## Build, Run, and Test Commands
+
+### Local development (Docker Compose)
+```bash
+docker-compose up --build              # Frontend :3000, API :8000, Postgres :5432
+docker-compose up --build backend db   # Backend only
+```
+
+### Backend (from `backend/`)
+```bash
+source .venv/bin/activate              # Activate virtualenv first
+uvicorn app.main:app --reload          # Dev server on :8000 (needs venv + DATABASE_URL)
+python -m pytest -q                     # Test suite
+python -m pytest tests/integration/test_bookmark_search.py -q   # Single test file
+alembic upgrade head                    # Apply pending migrations
+alembic revision --autogenerate -m "…"  # Generate a migration from model changes
+ruff check . && ruff format --check .   # Lint + format check
+mypy app                                # Type check
+```
+
+### Frontend (from `frontend/`)
+```bash
+npm start                              # Dev server on :3000 (proxies /api to :8000)
+npm run build                          # Production build
+npm test -- --watchAll=false           # Unit tests
+npx tsc --noEmit                       # Type check (strict mode)
+npm run lint                           # ESLint
+```
+
+---
+
+## Project Structure
+
+```
+bookmarkr/
+├── backend/                   # FastAPI + SQLAlchemy 2.x + Pydantic v2
+│   ├── app/
+│   │   ├── api/               # Routers (bookmarks, tags, auth)
+│   │   ├── models/            # SQLAlchemy models (Bookmark, Tag)
+│   │   ├── schemas/           # Pydantic request/response schemas
+│   │   ├── services/          # Business logic (search.py, …) — not in route handlers
+│   │   ├── core/              # config, security, logging
+│   │   ├── database.py        # Engine + session
+│   │   └── main.py            # App entry point
+│   ├── alembic/versions/      # Migrations
+│   ├── tests/{unit,integration}/
+│   └── CONTEXT.md             # Domain glossary — lazy-built per Phase 4
+├── frontend/                  # React + TypeScript
+│   └── src/{pages,components,services,styles,types,hooks}/
+├── .github/workflows/         # CI (backend, frontend, security)
+└── docker-compose.yml         # frontend, backend, postgres
+```
+
+### Key architectural flows
+
+- **Request flow:** Frontend → API client → `/api/*` → FastAPI router → service → SQLAlchemy → PostgreSQL.
+- **Auth flow:** Frontend obtains a JWT from the auth provider → backend validates via a `get_current_user` dependency → the user id scopes every query (tenant isolation).
+- **Search flow:** `GET /bookmarks/search?q=` → `services/search.py` builds a ranked, tenant-scoped Postgres full-text query (see [ADR-0001](docs/decisions/0001-postgres-fts-over-elasticsearch.md)).
+
+### Domain glossary
+For the canonical domain terms (Bookmark, Tag, SearchQuery, with invariants), see `backend/CONTEXT.md`. For load-bearing architectural choices, see `karpathy-knowledge-base-example/docs/decisions/`.
+
+### External integrations
+| Service | Purpose | Config |
+|---------|---------|--------|
+| Auth provider (JWT) | Sign-in, token issuance | `AUTH_ISSUER`, `AUTH_AUDIENCE` |
+| PostgreSQL | Primary datastore + full-text search | `DATABASE_URL` |
+
+_(Replace with your real integrations. Provider-specific gotchas live in `karpathy-knowledge-base-example/docs/integrations/<provider>/gotchas.md`.)_
+
+---
+
+## Testing
+
+- Backend: unit tests in `tests/unit/`, integration tests in `tests/integration/` (real Postgres via testcontainers; external HTTP mocked at the boundary). See Section J of the standards for the test hierarchy and rules.
+- Frontend: unit tests colocated with components.
+- CI: backend (lint, type check, tests, migration up/down cycle), frontend (format, tests), security scan (secrets + dependency audit).
+
+---
+
+## Development Workflow
+
+Follow `karpathy-knowledge-base-example/docs/development-workflow.md` exactly. This project does not have its own workflow.
+
+Iteration folders live at `karpathy-knowledge-base-example/docs/iterations/<story-prefix><name>/` and contain (per the workflow): `grilling.md`, `plan.md`, `tdd-trace.md`, `code-review-*.md`, `summary.md`, `code-review-walkthrough.md`. Story prefixes follow `karpathy-knowledge-base-example/docs/references/01-jira-board-structure.md`. See the worked example at `karpathy-knowledge-base-example/docs/iterations/story-2.1-full-text-search/`.
+
+---
+
+## Git and Commits
+
+Follow Section L of `karpathy-knowledge-base-example/docs/review-coding-standards.md` (no AI attribution, imperative mood, subject ≤72 chars, no `--no-verify`).
+
+---
+
+## Project-specific overrides
+
+Generic language/framework rules live in the standards (Sections E–K). List **only** project-specific items here. Examples for Bookmarkr:
+
+- **All routes are prefixed with `/api/`.** New routers attach under that prefix.
+- **Service-layer location.** Business logic lives in `backend/app/services/`, not in route handlers.
+- **Tenant isolation is non-negotiable.** Every query that reads user data filters by `user_id`. This is the single most important invariant — it is what the Story 2.1 review caught a violation of.
+- **Logging.** Use the configured structured logger, never `print()`.
+- **Postgres.** Prefer `text` over `varchar(n)`; use partial indexes for common filter conditions; full-text search uses a weighted `tsvector` + GIN index (ADR-0001).
+
+---
+
+## Architecture Documents
+
+The canonical entry points are in the "Canonical workflow and standards" block above. Supplementary:
+
+- **Decisions and rationale:** `karpathy-knowledge-base-example/docs/decisions/` (ADRs — "why is it built this way?")
+- **Domain glossary:** `backend/CONTEXT.md`
+- **Programme:** `karpathy-knowledge-base-example/docs/references/01-jira-board-structure.md` (epics, stories, sub-tasks, points)
+- **Worked example iteration:** `karpathy-knowledge-base-example/docs/iterations/story-2.1-full-text-search/`

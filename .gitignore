@@ -1,0 +1,6 @@
+.DS_Store
+.tmp.drivedownload/
+.tmp.driveupload/
+
+# MkDocs build output (regenerated locally on `mkdocs serve` / `mkdocs build`).
+site/

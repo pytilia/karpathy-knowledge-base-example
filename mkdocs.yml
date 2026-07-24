@@ -1,0 +1,77 @@
+site_name: Project Memory Wiki
+site_description: A Karpathy-style project-memory wiki — process, architecture, decisions, integrations, iterations.
+docs_dir: docs
+use_directory_urls: true
+
+# Wiki binds to an uncommon port (8765) to avoid clashes with backend (:8000),
+# frontend (:3000), and other tools that crowd :8080. Override with `mkdocs serve --dev-addr` if needed.
+dev_addr: 127.0.0.1:8765
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    # navigation.sections deliberately omitted — without it, folders render as
+    # collapsible groups in the sidebar (click to expand/collapse). With it, they'd
+    # be flat section headers, which gets unwieldy as the wiki grows.
+    - navigation.indexes
+    - navigation.top
+    - navigation.tracking
+    - navigation.instant
+    - navigation.prune
+    - toc.follow
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  font:
+    text: Inter
+    code: JetBrains Mono
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+# No `nav:` declared on purpose — mkdocs auto-discovers from docs/ folder.
+# Numbered prefixes (01-, 02-, ...) sort correctly; index.md becomes the home page.
+# Add a `nav:` block here later if manual ordering becomes worth the maintenance cost.
+
+strict: false
